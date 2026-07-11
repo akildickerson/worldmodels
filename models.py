@@ -55,7 +55,7 @@ class VariationalAutoEncoder(nn.Module):
     x = F.relu(self.deconv1(x))
     x = F.relu(self.deconv2(x))
     x = F.relu(self.deconv3(x))
-    x = F.relu(self.deconv4(x))
+    x = F.sigmoid(self.deconv4(x))
 
     return x, z, mu, logvar
   
