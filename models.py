@@ -76,3 +76,40 @@ def ELBOLoss(pred, target, mu, logvar, beta=1.0):
   kl = (-0.5 * torch.sum(1 + logvar - mu**2 - torch.exp(logvar))) / _batch_size
 
   return beta * kl + recon
+
+# ---------------------------------------------------------------------
+# MDN-RNN
+
+class MixtureDensityNetwork(nn.Module):
+  """
+  Ha & Schmidhuber: 422,368
+  parameters: 728,581
+  """
+  def __init__(self):
+    super().__init__()
+
+    self.lstm = nn.LSTM(131,256, batch_first=True) # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber 
+    self.mdn = nn.Linear(256,1285) # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
+
+  def forward(self, z, a, hidden=None):
+    x = torch.cat([z, a], dim=-1)
+    out, h = self.lstm(x, hidden) # (B, L, 256) L -> sequence length
+    params = self.mdn(out)
+    B, L = params.shape[0], params.shape[1] 
+    logits = params[..., :5] # pi logits (B, T, L)
+    mu = params[..., 5:645].reshape(B, L, 5, 128)
+    sigma = (F.softplus(params[..., 645:]) + 1e-3).reshape(B, L, 5, 128)
+    sigma = sigma.clamp(min=1e-3, max=10) # numerical stability
+
+    return h, logits, mu, sigma
+
+def NLL(logits, mu, sigma, z):
+  """
+  NLL Loss as described in Bishop 1994, Mixutre Density Networks 
+  """
+  z = z.unsqueeze(2) # z.shape (B, T, L) - > (B, T, 1, L) -> (B, 1000, 1, 128)
+  # T represents the number of frames in the rollout & L represents size of latent dimension
+  log_pi = F.log_softmax(logits, dim=-1)
+  log_prob = torch.distributions.Normal(mu, sigma).log_prob(z).sum(dim=-1)
+  
+  return -torch.logsumexp(log_pi + log_prob, dim=-1).mean()
