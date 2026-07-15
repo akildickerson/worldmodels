@@ -47,6 +47,11 @@ def main():
             },
             f"data/rollouts/rollout_{i}.pth",
         )
+        # NOTE: Wrapped in a numpy array first because it is more efficient and to avoid PyTorch
+        # warning that results from creating a tensor from a list of numpy.ndarrays. Much faster 
+        # to convert to a single numpy.ndarray first. 
+        # NOTE: Although the VAE uses individual frames to train, and the MDN-RNN uses rollouts to train, 
+        # therefore we must distingush between different rollouts when we save them to disk.
         env.close()
 
 
