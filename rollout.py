@@ -1,3 +1,8 @@
+"""
+Script to collect rollouts used to train the vae and mdn-rnn. Designed in a way
+that SLURM array jobs can be used to make rollout collection more efficient.
+"""
+
 import argparse
 import os
 
@@ -7,6 +12,9 @@ import torch
 
 
 def make_env(render_mode=None):
+    """
+    wrapper method, will enventually be able to pass in different gymnasium enviornements.
+    """
     return gym.make("CarRacing-v3", render_mode=render_mode)
 
 
@@ -40,7 +48,6 @@ def main():
             f"data/rollouts/rollout_{i}.pth",
         )
         env.close()
-        pass
 
 
 if __name__ == "__main__":
