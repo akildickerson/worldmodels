@@ -88,8 +88,10 @@ class MixtureDensityNetwork(nn.Module):
   def __init__(self):
     super().__init__()
 
-    self.lstm = nn.LSTM(131,256, batch_first=True) # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber 
-    self.mdn = nn.Linear(256,1285) # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
+    self.lstm = nn.LSTM(131,256, batch_first=True) 
+    # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber 
+    self.mdn = nn.Linear(256,1285) 
+    # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
 
   def forward(self, z, a, hidden=None):
     x = torch.cat([z, a], dim=-1)
@@ -97,7 +99,7 @@ class MixtureDensityNetwork(nn.Module):
     params = self.mdn(out)
     B, L = params.shape[0], params.shape[1] 
     logits = params[..., :5] # pi logits (B, T, L)
-    mu = params[..., 5:645].reshape(B, L, 5, 128)
+    mu = params[..., 5:645].reshape(B, L, 5, 128) 
     sigma = (F.softplus(params[..., 645:]) + 1e-3).reshape(B, L, 5, 128)
     sigma = sigma.clamp(min=1e-3, max=10) # numerical stability
 
@@ -111,5 +113,5 @@ def NLL(logits, mu, sigma, z):
   # T represents the number of frames in the rollout & L represents size of latent dimension
   log_pi = F.log_softmax(logits, dim=-1)
   log_prob = torch.distributions.Normal(mu, sigma).log_prob(z).sum(dim=-1)
-  
+
   return -torch.logsumexp(log_pi + log_prob, dim=-1).mean()
