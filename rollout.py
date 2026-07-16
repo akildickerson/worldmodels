@@ -32,7 +32,7 @@ def main():
     for i in range(args.start, args.start + args.num):
         actions, observations = [], []
         obs, _ = env.reset()
-        terminated, truncated = False
+        terminated = truncated = False
         while not (terminated or truncated):
             action = env.action_space.sample()
             obs, _, terminated, truncated, _ = env.step()
