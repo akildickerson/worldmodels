@@ -75,7 +75,7 @@ def ELBOLoss(pred, target, mu, logvar, beta=1.0):
   recon = F.mse_loss(pred, target, reduction='sum') / _batch_size
   kl = (-0.5 * torch.sum(1 + logvar - mu**2 - torch.exp(logvar))) / _batch_size
 
-  return beta * kl + recon
+  return (beta * kl + recon), recon
 
 # ---------------------------------------------------------------------
 # MDN-RNN
