@@ -35,7 +35,7 @@ def main():
         terminated = truncated = False
         while not (terminated or truncated):
             action = env.action_space.sample()
-            obs, reward, terminated, truncated, _ = env.step()
+            obs, reward, terminated, truncated, _ = env.step(action)
             actions.append(action)
             observations.append(obs)
         torch.save(
