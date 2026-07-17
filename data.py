@@ -4,19 +4,19 @@ All episodes are truncated to a max length of 1000 frames.
 """
 
 import os
-import random
 import torch
 from torch.utils.data import Dataset
 
 
 class FrameDataset(Dataset):
-    def __init__(self, path, frames_per_file=999):
+    def __init__(self, path, frames_per_file=999, files=None):
         self.path = path
-        self.files = [
-            os.path.join(path, f) for f in os.listdir(path) if f.endswith(".pth")
-        ]
-        self.files = sorted(self.files)
-        random.shuffle(self.files)
+        if self.files is None:
+            self.files = sorted([
+                os.path.join(path, f) for f in os.listdir(path) if f.endswith(".pth")
+            ])
+        else:
+            self.files = files
         self.frames_per_file = frames_per_file
 
         # NOTE: Caching is used for efficiency. If we don't cache we'd open and close a file for every single frame, 
