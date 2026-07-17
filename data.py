@@ -17,7 +17,10 @@ class FrameDataset(Dataset):
             ])
         else:
             self.files = files
+
         self.frames_per_file = frames_per_file
+        self.cached_file = None
+        self.cached_obs = None
 
         # NOTE: Caching is used for efficiency. If we don't cache we'd open and close a file for every single frame, 
         # and with ~10,000 rollouts x ~999 frames, thats ~ 10M file opens per epoch, which overwhelms a shared HPC filesystem.
@@ -26,20 +29,17 @@ class FrameDataset(Dataset):
         # TRADEOFF: This requires us to use shuffle=False, meaning each batch is drawn from consecutive frames in one episode, 
         # which are visually very similar. Since the VAE treats every frame independently (no temporal dependency in the loss), 
         # this doesn't affect correctness, but could mean a noisier gradient steps than a fully shuffled dataset.
-        self.cached_file = None
-        self.cached_obs = None
 
 
     def __len__(self):
-        return len(self.frames) * self.frames_per_file
+        return len(self.files) * self.frames_per_file
 
     def __getitem__(self, idx):
         file_i = idx // self.frames_per_file # which file
         frame_i = idx % self.frames_per_file # frame within the file
         
         if file_i != self.cached_file:
-            path = self.files[file_i]
-            data = torch.load(path)
+            data = torch.load(self.files[file_i])
             self.cached_obs = data["observations"]
             self.cached_file = file_i
         
