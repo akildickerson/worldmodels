@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from data import FrameDataset
-from models import VAE, ELBOLoss
+from models import VariationalAutoEncoder, ELBOLoss
 
 
 def estimate_loss(model, val_iter, device, nbatches=20):
@@ -52,7 +52,7 @@ def vae_train(path):
     )
     val_iter = itertools.cycle(Xval)
 
-    vae = VAE().to(device)
+    vae = VariationalAutoEncoder().to(device)
     optimizer = torch.optim.Adam(vae.parameters(), lr=1e-4)
 
     trlossi, trreconi = [], []
