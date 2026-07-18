@@ -1,5 +1,4 @@
 import argparse
-import itertools
 import json
 import os
 import random
@@ -9,22 +8,29 @@ import torch
 from torch.utils.data import DataLoader
 
 from data import FrameDataset
-from models import VariationalAutoEncoder, ELBOLoss
+from models import ELBOLoss, VariationalAutoEncoder
 
 
-def estimate_loss(model, val_iter, device, nbatches=20):
+def estimate_loss(model, Xval, val_iter, device, nbatches=20):
     model.eval()
     losses, recons = [], []
+
     with torch.no_grad():
         for _ in range(nbatches):
-            batch = next(val_iter)
+            try:
+                batch = next(val_iter)
+            except StopIteration:
+                val_iter = iter(Xval)
+                batch = next(val_iter)
+
             obs = batch.to(device, non_blocking=True)
             pred, _, mu, logvar = model(obs)
             loss, recon = ELBOLoss(pred, obs, mu, logvar)
             losses.append(loss.item())
             recons.append(recon.item())
+
     model.train()
-    return sum(losses) / len(losses), sum(recons) / len(recons)
+    return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
 
 
 def vae_train(path):
@@ -50,7 +56,7 @@ def vae_train(path):
         DataLoader(train_dataset, batch_size=256, shuffle=False, pin_memory=True),
         DataLoader(val_dataset, batch_size=256, shuffle=False, pin_memory=True),
     )
-    val_iter = itertools.cycle(Xval)
+    val_iter = iter(Xval)
 
     vae = VariationalAutoEncoder().to(device)
     optimizer = torch.optim.Adam(vae.parameters(), lr=1e-4)
@@ -77,7 +83,9 @@ def vae_train(path):
             optimizer.step()
 
             if idx % eval_interval == 0:
-                val_loss, val_recon = estimate_loss(vae, val_iter, device)
+                val_loss, val_recon, val_iter = estimate_loss(
+                    vae, Xval, val_iter, device
+                )
                 vallossi.append(val_loss)
                 valreconi.append(val_recon)
                 vsteps.append(idx)
@@ -92,8 +100,11 @@ def vae_train(path):
     with open("logs/vae_losses.json", "w") as f:
         json.dump(
             {
-                "train_loss": trlossi, "train_recon": trreconi,
-                "val_loss": vallossi, "val_recon": valreconi, "val_steps": vsteps,
+                "train_loss": trlossi,
+                "train_recon": trreconi,
+                "val_loss": vallossi,
+                "val_recon": valreconi,
+                "val_steps": vsteps,
             },
             f,
         )
