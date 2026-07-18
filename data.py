@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 
 class FrameDataset(Dataset):
-    def __init__(self, path, frames_per_file=999, files=None):
+    def __init__(self, path, files=None):
         self.path = path
         if self.files is None:
             self.files = sorted([
@@ -17,8 +17,12 @@ class FrameDataset(Dataset):
             ])
         else:
             self.files = files
+        self.lengths = []
+        for f in self.files:
+            data = torch.load(f, nmap=True)
+            self.lengths.append(data["observations"].shape[0])
 
-        self.frames_per_file = frames_per_file
+        self.cumulative = torch.cumsum(torch.tensor([0] + self.lengths), dim=0)
         self.cached_file = None
         self.cached_obs = None
 
@@ -32,11 +36,12 @@ class FrameDataset(Dataset):
 
 
     def __len__(self):
-        return len(self.files) * self.frames_per_file
+        return self.cumulative[-1].item()
 
     def __getitem__(self, idx):
-        file_i = idx // self.frames_per_file # which file
-        frame_i = idx % self.frames_per_file # frame within the file
+        # binary search
+        file_i = torch.searchsorted(self.cumulative, idx, right=True).item() - 1
+        frame_i = idx - self.cumulative[file_i].item() # frame within the file
         
         if file_i != self.cached_file:
             data = torch.load(self.files[file_i])
