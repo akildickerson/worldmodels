@@ -60,7 +60,8 @@ class FrameDataset(Dataset):
 
 # ---------------------------------------------------------
 # Dataset containing full epsiodes to extract latents
-# using trained VAE.
+# using trained VAE. Checked the length of all episodes and 
+# all episodes are same length (1000 frames)
 
 
 class EpisodeDataset(Dataset):
