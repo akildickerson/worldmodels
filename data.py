@@ -1,12 +1,14 @@
 """
-Custom dataset to load frames to train the VAE. 
-All episodes are truncated to a max length of 1000 frames.
+datasets
 """
 
 import os
 import torch
 from torch.utils.data import Dataset
 
+# ----------------------------------------------------
+# Dataset containing individual frames (observations)
+# from the enviornment to train the VAE.
 
 class FrameDataset(Dataset):
     def __init__(self, path, files=None):
@@ -53,3 +55,28 @@ class FrameDataset(Dataset):
         obs = torch.permute(obs, (2, 0, 1))
 
         return obs
+    
+# ---------------------------------------------------------
+# Dataset containing full epsiodes to extract latents 
+# using trained VAE.
+    
+class EpisodeDataset(Dataset):
+    def __init__(self, path, nframes=999):
+        self.files = [
+            os.path.join(path, f) for f in os.listdir(path) if f.endswith('.pth')
+        ]
+        self.nframes = nframes
+    
+    def __len__(self):
+        return len(self.files)
+    
+    def __getitem__(self, idx):
+        path = self.files[idx]
+        data = torch.load(path)
+        obs = data["observations"][:self.nframes]
+        actions = data["actions"][:self.nframes]
+
+        obs = obs.float() / 255.0
+        actions = actions.float()
+
+        return obs, actions
