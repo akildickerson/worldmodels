@@ -21,8 +21,8 @@ def estimate_loss(model, val_iter, device, nbatches=20):
             obs = batch.to(device, non_blocking=True)
             pred, _, mu, logvar = model(obs)
             loss, recon = ELBOLoss(pred, obs, mu, logvar)
-            losses.append(loss)
-            recons.append(recons)
+            losses.append(loss.item())
+            recons.append(recon.item())
     model.train()
     return sum(losses) / len(losses), sum(recons) / len(recons)
 
