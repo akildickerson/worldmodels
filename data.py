@@ -19,7 +19,7 @@ class FrameDataset(Dataset):
             self.files = files
         self.lengths = []
         for f in self.files:
-            data = torch.load(f, nmap=True)
+            data = torch.load(f, mmap=True)
             self.lengths.append(data["observations"].shape[0])
 
         self.cumulative = torch.cumsum(torch.tensor([0] + self.lengths), dim=0)
