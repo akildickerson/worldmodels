@@ -1,13 +1,11 @@
 """
-diagnose.py
-
-Post-training VAE diagnostics:
-  1. Plot train/val ELBO loss curve (log10 scale) — saved separately
-  2. Plot train/val reconstruction loss curve (log10 scale) — saved separately
-  3. Check for posterior collapse (mu std across diverse frames)
-  4. Visualize a few reconstructions vs. originals (skips the track-preview
-     first frame of each episode, which looks structurally different from
-     normal driving frames and reconstructs poorly for that reason)
+VAE diagnostics:
+Plot train/val ELBO loss curve (log10 scale)
+Plot train/val reconstruction loss curve (log10 scale)
+Check for posterior collapse (mu std across diverse frames)
+Visualize a few reconstructions vs. originals (skips the track-preview
+first frame of each episode, which looks structurally different from
+normal driving frames and reconstructs poorly for that reason)
 """
 import json
 import torch
@@ -81,10 +79,6 @@ def check_posterior_collapse(vae, dataset, device):
 
 
 def plot_reconstructions(vae, dataset, device):
-    # Skip index 0 — the track-preview frame at the start of each episode
-    # looks structurally different from normal driving frames (overhead
-    # view, no car, different color distribution) and reconstructs poorly
-    # for that reason alone; not representative of typical VAE performance.
     idxs = [len(dataset) // 4, len(dataset) // 2, len(dataset) - 1]
     batch = torch.stack([dataset[i] for i in idxs]).to(device)
 
