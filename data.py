@@ -11,7 +11,7 @@ from torch.utils.data import Dataset
 class FrameDataset(Dataset):
     def __init__(self, path, files=None):
         self.path = path
-        if self.files is None:
+        if files is None:
             self.files = sorted([
                 os.path.join(path, f) for f in os.listdir(path) if f.endswith(".pth")
             ])
@@ -27,7 +27,7 @@ class FrameDataset(Dataset):
         self.cached_obs = None
 
         # NOTE: Caching is used for efficiency. If we don't cache we'd open and close a file for every single frame, 
-        # and with ~10,000 rollouts x ~999 frames, thats ~ 10M file opens per epoch, which overwhelms a shared HPC filesystem.
+        # and with ~10,000 rollouts x ~500 frames, thats ~5M file opens per epoch, which overwhelms a shared HPC filesystem.
         # FIX: Cache one file's full contents in memory when first opened, serve all frames from that file, then move to the next.
         # This dropped training time by ~36x (12+ hours -> ~20 min per epoch). 
         # TRADEOFF: This requires us to use shuffle=False, meaning each batch is drawn from consecutive frames in one episode, 
@@ -41,7 +41,7 @@ class FrameDataset(Dataset):
     def __getitem__(self, idx):
         # binary search
         file_i = torch.searchsorted(self.cumulative, idx, right=True).item() - 1
-        frame_i = idx - self.cumulative[file_i].item() # frame within the file
+        frame_i = idx - self.cumulative[file_i].item()
         
         if file_i != self.cached_file:
             data = torch.load(self.files[file_i])
