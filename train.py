@@ -17,6 +17,8 @@ def estimate_loss(model, Xval, val_iter, device, nbatches=20):
 
     with torch.no_grad():
         for _ in range(nbatches):
+
+            # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU. 
             try:
                 batch = next(val_iter)
             except StopIteration:
