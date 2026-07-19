@@ -60,7 +60,7 @@ class FrameDataset(Dataset):
 
 # ---------------------------------------------------------
 # Dataset containing full epsiodes to extract latents
-# using trained VAE. Checked the length of all episodes and 
+# using trained VAE. Checked the length of all episodes and
 # all episodes are same length (1000 frames)
 
 
@@ -86,3 +86,21 @@ class EpisodeDataset(Dataset):
         actions = actions.float()
 
         return obs, actions
+
+
+# ------------------------------------
+# Latent Dataset to train the MDN-RNN
+
+
+class LatentDataset(Dataset):
+    def __init__(self, path):
+        self.files = [
+            os.path.join(path, f) for f in os.listdir(path) if f.endswith(".pt")
+        ]
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        sample = torch.load(self.files[idx])
+        return sample["latent"], sample["action"]
