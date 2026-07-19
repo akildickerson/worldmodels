@@ -1,19 +1,14 @@
-"""
-VAE diagnostics:
-Plot train/val ELBO loss curve (log10 scale)
-Plot train/val reconstruction loss curve (log10 scale)
-Check for posterior collapse (mu std across diverse frames)
-Visualize a few reconstructions vs. originals (skips the track-preview
-first frame of each episode, which looks structurally different from
-normal driving frames and reconstructs poorly for that reason)
-"""
 import json
-import torch
+from pathlib import Path
+
 import matplotlib
+import torch
+
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from models import VariationalAutoEncoder
+
 from data import FrameDataset
+from models import VariationalAutoEncoder
 
 CHECKPOINT_PATH = "checkpoints/vae.pth"
 LOG_PATH = "logs/vae_losses.json"
@@ -22,6 +17,8 @@ OUTPUT_DIR = "figures"
 
 
 def plot_loss_curves():
+    # Plot loss curves with log10 scale. Plot both ELBO Loss and the Reconstruction Loss.
+    # Save plots to figures.
     with open(LOG_PATH) as f:
         logs = json.load(f)
 
@@ -57,10 +54,12 @@ def plot_loss_curves():
 
 
 def check_posterior_collapse(vae, dataset, device):
+    # Check for posterior collapse. Check 1-step MSE and mu std. Low std means
+    # VAE is outputting similar mu for all observations and a sign of posterior
+    # collapse.
     # NOTE: In the previous implementation, a collapsed VAE showed
     # mu std ~ 0.001 and mu barely changed across frames/timesteps
-    # (1-step MSE ~ 1e-8). A healthy VAE's mu should vary meaningfully
-    # across visually different frames.
+    # (1-step MSE ~ 1e-8).
     idxs = list(range(0, len(dataset), max(1, len(dataset) // 20)))
     batch = torch.stack([dataset[i] for i in idxs]).to(device)
 
@@ -79,6 +78,7 @@ def check_posterior_collapse(vae, dataset, device):
 
 
 def plot_reconstructions(vae, dataset, device):
+    # Visualize reconstructions created by the VAE.
     idxs = [len(dataset) // 4, len(dataset) // 2, len(dataset) - 1]
     batch = torch.stack([dataset[i] for i in idxs]).to(device)
 
@@ -106,7 +106,6 @@ def plot_reconstructions(vae, dataset, device):
 
 
 def main():
-    from pathlib import Path
     Path(OUTPUT_DIR).mkdir(exist_ok=True)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
