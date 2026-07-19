@@ -11,31 +11,33 @@ from data import FrameDataset
 from models import ELBOLoss, VariationalAutoEncoder
 
 
-def estimate_loss(model, Xval, val_iter, device, nbatches=20):
-    model.eval()
-    losses, recons = [], []
-
-    with torch.no_grad():
-        for _ in range(nbatches):
-
-            # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU. 
-            try:
-                batch = next(val_iter)
-            except StopIteration:
-                val_iter = iter(Xval)
-                batch = next(val_iter)
-
-            obs = batch.to(device, non_blocking=True)
-            pred, _, mu, logvar = model(obs)
-            loss, recon = ELBOLoss(pred, obs, mu, logvar)
-            losses.append(loss.item())
-            recons.append(recon.item())
-
-    model.train()
-    return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
-
-
 def vae_train(path):
+    # internal function to estimate loss specifically for VAE. 
+    def _estimate_loss(model, Xval, val_iter, device, nbatches=20):
+        model.eval()
+        losses, recons = [], []
+
+        with torch.no_grad():
+            for _ in range(nbatches):
+
+                # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU. 
+                try:
+                    batch = next(val_iter)
+                except StopIteration:
+                    val_iter = iter(Xval)
+                    batch = next(val_iter)
+
+                obs = batch.to(device, non_blocking=True)
+                pred, _, mu, logvar = model(obs)
+                loss, recon = ELBOLoss(pred, obs, mu, logvar)
+                losses.append(loss.item())
+                recons.append(recon.item())
+
+        model.train()
+        return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
+    
+    # -------------
+    # Train the VAE
     Path("checkpoints").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
 
@@ -84,8 +86,9 @@ def vae_train(path):
             # update
             optimizer.step()
 
+            # estimate loss
             if idx % eval_interval == 0:
-                val_loss, val_recon, val_iter = estimate_loss(
+                val_loss, val_recon, val_iter = _estimate_loss(
                     vae, Xval, val_iter, device
                 )
                 vallossi.append(val_loss)
@@ -97,8 +100,8 @@ def vae_train(path):
                     f"train recon: {recon.item():.4f} | val recon: {val_recon:.4f}",
                     flush=True,
                 )
-
-    torch.save(vae.state_dict(), "checkpoints/vae.pth")  # save model weights
+    # store loss stats and model checkpoints
+    torch.save(vae.state_dict(), "checkpoints/vae.pth") # (use .pt in the future because its recommended)
     with open("logs/vae_losses.json", "w") as f:
         json.dump(
             {
