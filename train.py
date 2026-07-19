@@ -196,6 +196,7 @@ def rnn_train(path, epochs):
                 )
 
         torch.save(rnn.state_dict(), f"checkpoints/rnn_{epoch}.pt")
+    torch.save(rnn.state_dict(), "checkpoints/rnn.pt")
     with open("logs/rnn_losses.json", "w") as f:
         json.dump({"train_loss": trloss, "val_loss": valloss, "steps": steps}, f)
 
