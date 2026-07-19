@@ -41,7 +41,7 @@ class VariationalAutoEncoder(nn.Module):
     x = F.relu(self.conv3(x))
     x = F.relu(self.conv4(x))
 
-    x = x.view(-1, 9216)
+    x = x.reshape(-1, 9216)
 
     mu = self.mu(x)
     logvar = self.logvar(x)
