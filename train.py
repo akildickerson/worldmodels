@@ -5,22 +5,21 @@ import random
 from pathlib import Path
 
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 
-from data import FrameDataset
-from models import ELBOLoss, VariationalAutoEncoder
+from data import FrameDataset, LatentDataset
+from models import ELBOLoss, VariationalAutoEncoder, NLL, MixtureDensityNetwork
 
 
 def vae_train(path):
-    # internal function to estimate loss specifically for VAE. 
+    # internal function to estimate loss specifically for VAE.
     def _estimate_loss(model, Xval, val_iter, device, nbatches=20):
         model.eval()
         losses, recons = [], []
 
         with torch.no_grad():
             for _ in range(nbatches):
-
-                # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU. 
+                # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU.
                 try:
                     batch = next(val_iter)
                 except StopIteration:
@@ -35,7 +34,7 @@ def vae_train(path):
 
         model.train()
         return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
-    
+
     # -------------
     # Train the VAE
     Path("checkpoints").mkdir(exist_ok=True)
@@ -101,7 +100,9 @@ def vae_train(path):
                     flush=True,
                 )
     # store loss stats and model checkpoints
-    torch.save(vae.state_dict(), "checkpoints/vae.pth") # (use .pt in the future because its recommended)
+    torch.save(
+        vae.state_dict(), "checkpoints/vae.pth"
+    )  # (use .pt in the future because its recommended)
     with open("logs/vae_losses.json", "w") as f:
         json.dump(
             {
@@ -115,8 +116,88 @@ def vae_train(path):
         )
 
 
-def rnn_train():
-    pass
+def rnn_train(path, epochs):
+
+    Path("checkpoints").mkdir(exist_ok=True)
+    Path("logs").mkdir(exist_ok=True)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    eval_iters = 100
+
+    # build dataset
+    data = LatentDataset(path)
+    Xtr, Xval = random_split(data, [0.8, 0.2])
+    Xtr = DataLoader(Xtr, batch_size=32, shuffle=True)
+    Xval = DataLoader(Xval, batch_size=32, shuffle=True)
+
+    rnn = MixtureDensityNetwork().to(device)
+    optimizer = torch.optim.Adam(rnn.parameters(), lr=1e-4)
+
+    # function to estimate train and val loss
+    def _estimate_loss(model, Xtr, Xval, device, nbatches=50):
+        model.eval()
+        out = {}
+
+        with torch.no_grad():
+            for split, loader in [("train", Xtr), ("val", Xval)]:
+                iterator = iter(loader)
+                losses = []
+                for _ in range(nbatches):
+                    try:
+                        latent, action = next(iterator)
+                    except StopIteration:
+                        iterator = iter(loader)
+                        latent, action = next(iterator)
+
+                    latent, action = latent.to(device), action.to(device)
+                    z = latent[:, :-1, :]
+                    a = action[:, :-1, :]
+                    target = latent[:, 1:, :]
+
+                    h, logits, mu, sigma = model(z, a)
+                    loss = NLL(logits, mu, sigma, target)
+                    losses.append(loss.item())
+                out[split] = sum(losses) / len(losses)
+        model.train()
+        return out
+
+    # train loop
+    trloss, valloss, steps = [], [], []
+    for epoch in range(epochs):
+        rnn.train()
+        for idx, (latent, action) in enumerate(Xtr):
+            latent, action = latent.to(device), action.to(device)
+
+            z = latent[:, :-1, :]
+            a = action[:, :-1, :]
+            target = latent[:, 1:, :]
+
+            # forward pass
+            optimizer.zero_grad()
+            _, logits, mu, sigma = rnn(z, a)
+            loss = NLL(logits, mu, sigma, target)
+
+            # backward pass
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(rnn.parameters(), max_norm=1.0)
+
+            # update
+            optimizer.step()
+
+            # eval loss
+            if idx % eval_iters == 0:
+                out = _estimate_loss(rnn, Xtr, Xval, device)
+                trloss.append(out["train"])
+                valloss.append(out["val"])
+                steps.append(epoch * len(Xtr) + idx)
+                print(
+                    f"epoch: {epoch} | train loss: {out['train']:.4f} | val loss {out['val']:.4f}",
+                    flush=True,
+                )
+
+        torch.save(rnn.state_dict(), f"checkpoints/rnn_{epoch}.pt")
+    with open("logs/rnn_losses.json", "w") as f:
+        json.dump({"train_loss": trloss, "val_loss": valloss, "steps": steps}, f)
 
 
 def controller_train():
@@ -126,15 +207,16 @@ def controller_train():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--model", type=str, required=True, choices=["vae", "mdn-rnn", "controller"]
+        "--model", type=str, required=True, choices=["vae", "rnn", "controller"]
     )
+    parser.add_argument("--epochs", type=int)
     parser.add_argument("--path", type=str, default="data/rollouts")
     args = parser.parse_args()
 
     if args.model == "vae":
         vae_train(path=args.path)
-    elif args.model == "mdn-rnn":
-        rnn_train()
+    elif args.model == "rnn":
+        rnn_train(path=args.path, epochs=args.epochs)
     elif args.model == "controller":
         controller_train()
 
