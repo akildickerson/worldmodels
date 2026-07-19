@@ -37,6 +37,7 @@ with torch.no_grad():
         x, z, mu, logvar = vae(obs)
         latent = mu.reshape(B, T, -1).cpu()
 
+        # save each latent in the batch seperately
         for i in range(B):
             torch.save(
                 {"latent": latent[i], "action": action[i].cpu()},
