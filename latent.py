@@ -35,7 +35,7 @@ with torch.no_grad():
         B, T, H, W, C = obs.shape
         obs = obs.reshape(B * T, H, W, C).permute(0, 3, 1, 2)  # want (B, C, H, W)
         x, z, mu, logvar = vae(obs)
-        latent = mu.view(B, T, -1).cpu()
+        latent = mu.reshape(B, T, -1).cpu()
 
         for i in range(B):
             torch.save(
