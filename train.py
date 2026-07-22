@@ -214,6 +214,7 @@ def main():
     )
     parser.add_argument("--epochs", type=int)
     parser.add_argument("--path", type=str, default="data/rollouts")
+    parser.add_argument("--workers", type=int, default=None)
     args = parser.parse_args()
 
     if args.model == "vae":
@@ -221,7 +222,7 @@ def main():
     elif args.model == "rnn":
         rnn_train(path=args.path, epochs=args.epochs)
     elif args.model == "controller":
-        controller_train()
+        controller_train(workers=args.workers)
 
 
 if __name__ == "__main__":
