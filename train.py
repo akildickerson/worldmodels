@@ -222,7 +222,8 @@ def main():
     elif args.model == "rnn":
         rnn_train(path=args.path, epochs=args.epochs)
     elif args.model == "controller":
-        controller_train(workers=args.workers)
+        from controller import train_controller
+        train_controller(workers=args.workers)
 
 
 if __name__ == "__main__":
