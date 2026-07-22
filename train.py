@@ -201,12 +201,6 @@ def rnn_train(path, epochs):
         json.dump({"train_loss": trloss, "val_loss": valloss, "steps": steps}, f)
 
 
-def controller_train():
-    # want same entry point for all training
-    from controller import train_controller
-    train_controller()
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
