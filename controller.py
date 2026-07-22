@@ -100,7 +100,7 @@ def evaluate_agent(params, pool, n_workers, n_rollouts, rng):
     return float(np.mean(means))
 
 
-def train_controller(generations=250, population=128, n_rollouts=16, eval_iter=25, workers=None):
+def train_controller(generations=500, population=128, n_rollouts=16, eval_iter=25, workers=None):
     checkpoints.mkdir(exist_ok=True)
     device = "cpu"
 
