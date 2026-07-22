@@ -151,6 +151,6 @@ class MLP(nn.Module):
 
         steer = torch.tanh(a[..., 0:1])
         gas = (torch.tanh(a[..., 1:2]) + 1) / 2
-        brake = (torch.sigmoid(a[..., 2:3]) + 1) / 2
+        brake = (torch.tanh(a[..., 2:3]) + 1) / 2
 
         return torch.cat([steer, gas, brake], dim=-1)
