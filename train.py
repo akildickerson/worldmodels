@@ -202,7 +202,9 @@ def rnn_train(path, epochs):
 
 
 def controller_train():
-    pass
+    # want same entry point for all training
+    from controller import train_controller
+    train_controller()
 
 
 def main():
