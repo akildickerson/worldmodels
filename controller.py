@@ -1,3 +1,4 @@
+import json
 import multiprocessing as mp
 from pathlib import Path
 
@@ -32,7 +33,7 @@ def init_worker(device: str):
     _rnn.load_state_dict(torch.load("checkpoints/rnn.pt", map_location=_device))
     _rnn.eval()
 
-    _controller = MLP().to(device)
+    _controller = MLP().to(_device)
 
 
 def _load_params(controller: MLP, params, device=None):
@@ -81,8 +82,25 @@ def rollout(args):
         rewards.append(r)
     return float(np.mean(rewards))
 
+def evaluate_agent(params, pool, n_workers, n_rollouts, rng):
+    """Evaluates a single agent (flat param vector) over
+    num_workers * rollouts_per_worker total rollouts, reusing the
+    existing worker pool. Mirrors the original paper's evaluation
+    approach: rather than picking an arbitrary rollout count (e.g. 100),
+    they reused the same per-generation compute budget already
+    configured (64 workers x 16 rollouts = 1024), just running it
+    1024 times against one fixed agent instead of one agent per worker.
+    """
+    seeds_per_worker = [
+        rng.integers(0, 2**31, size=n_rollouts).tolist()
+        for _ in range(n_workers)
+    ]
+    args = [(params, seeds) for seeds in seeds_per_worker]
+    means = pool.map(rollout, args)  # one mean-of-16 per worker
+    return float(np.mean(means))
 
-def train_controller(generations=250, population=64, n_rollouts=16, workers=None):
+
+def train_controller(generations=250, population=64, n_rollouts=16, eval_iter=25, workers=None):
     checkpoints.mkdir(exist_ok=True)
     device = "cpu"
 
@@ -100,6 +118,8 @@ def train_controller(generations=250, population=64, n_rollouts=16, workers=None
     es = cma.CMAEvolutionStrategy(n_params * [0], 0.1, {"popsize": population})
     rng = np.random.default_rng(42)
     _best = -float("inf")
+
+    scores, gens = [], []  # for plotting the "red line"
 
     with mp.Pool(
         processes=workers, initializer=init_worker, initargs=(device,)
@@ -128,7 +148,28 @@ def train_controller(generations=250, population=64, n_rollouts=16, workers=None
                 torch.save(controller.state_dict(), checkpoints / "controller.pt")
                 print(f" ---> new best: {_best:.1f}", flush=True)
 
+            # Every eval_iter generations, evaluate the current best agent
+            # over a much larger rollout count for a more reliable score —
+            # matches the paper's methodology for the reported 900.46 result.
+            if (gen + 1) % eval_iter == 0:
+                score = evaluate_agent(
+                    params, pool, workers, n_rollouts, rng
+                )
+                scores.append(score)
+                gens.append(gen + 1)
+                rollouts = workers * n_rollouts
+                print(
+                    f"  -> eval @ gen {gen + 1}: {score:.2f} "
+                    f"(avg over {rollouts} rollouts)",
+                    flush=True,
+                )
+    with open("logs/controller_eval.json", "w") as f:
+        json.dump({"gens": gens, "scores": scores}, f)
+
     print(f"training complete | best reward: {_best:.1f}", flush=True)
 
 
 # --------------------------
+
+if __name__ == "__main__":
+    train_controller()
