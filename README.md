@@ -47,19 +47,26 @@ Everything lives in `models.py` — one file, three classes:
 ## 3. Training
 
 Four stages, run in order, each one freezing the last:
+
 rollout.py -> collect random-policy episodes from the env
+
 train.py --model vae -> train the VAE on individual frames
+
 latent.py -> encode every frame witht he frozen VAE
+
 train.py --model rnn -> train the MDN-RNN on latent sequences
+
 controller.py -> CMA-ES over the controller's 1.1k params
+
 Ran on UNC's Longleaf cluster. VAE and MDN-RNN train with standard
 backprop; the controller does not — it's optimized directly against
 episode reward via CMA-ES, since reward from a physics sim isn't
 something you can backprop through.
 
-[VAE loss curve]
-[VAE reconstructions]
-[MDN-RNN loss curve]
+![VAE loss curve](figures/vae_elbo_loss.png)
+![VAE reconstruction loss](figures/vae_recon_loss.png)
+![VAE reconstructions](figures/vae_reconstructions.png)
+![MDN-RNN NLL loss](figures/rnn_nll_loss.png)
 
 ## 4. Results
 
