@@ -7,7 +7,7 @@ import os
 import torch
 from torch.utils.data import Dataset
 
-# ----------------------------------------------------
+# ---------------------------------------------------------
 # Dataset containing individual frames (observations)
 # from the enviornment to train the VAE.
 
@@ -30,19 +30,20 @@ class FrameDataset(Dataset):
         self.cached_file = None
         self.cached_obs = None
 
-        # NOTE: Caching is used for efficiency. If we don't cache we'd open and close a file for every single frame,
-        # and with ~10,000 rollouts x ~500 frames, thats ~5M file opens per epoch, which overwhelms a shared HPC filesystem.
-        # FIX: Cache one file's full contents in memory when first opened, serve all frames from that file, then move to the next.
-        # This dropped training time by ~36x (12+ hours -> ~20 min per epoch).
-        # TRADEOFF: This requires us to use shuffle=False, meaning each batch is drawn from consecutive frames in one episode,
-        # which are visually very similar. Since the VAE treats every frame independently (no temporal dependency in the loss),
-        # this doesn't affect correctness, but could mean a noisier gradient steps than a fully shuffled dataset.
+        # Caching is used for efficiency. If we don't cache we'd open and close a file for 
+        # every single frame, and with 10,000 rollouts x 1000 frames, thats 10M file opens 
+        # per epoch, which overwhelms a shared HPC filesystem. So we cache one file's full 
+        # contents in memory when first opened, serve all frames from that file, then move 
+        # to the next. This dropped training time by ~36x (12+ hours -> ~20 min per epoch). 
+        # This requires us to use shuffle=False, meaning each batch is drawn from consecutive 
+        # frames in one episode, which are visually very similar. Since the VAE treats every 
+        # frame independently (no temporal dependency in the loss), this doesn't affect 
+        # correctness, but could mean a noisier gradient steps than a fully shuffled dataset.
 
     def __len__(self):
         return self.cumulative[-1].item()
 
     def __getitem__(self, idx):
-        # binary search
         file_i = torch.searchsorted(self.cumulative, idx, right=True).item() - 1
         frame_i = idx - self.cumulative[file_i].item()
 
@@ -59,9 +60,8 @@ class FrameDataset(Dataset):
 
 
 # ---------------------------------------------------------
-# Dataset containing full epsiodes to extract latents
-# using trained VAE. Checked the length of all episodes and
-# all episodes are same length (1000 frames)
+# Dataset containing full epsiodes. Checked the length of 
+# all episodes and all episodes are same length (1000 frames)
 
 
 class EpisodeDataset(Dataset):
@@ -88,8 +88,8 @@ class EpisodeDataset(Dataset):
         return obs, actions
 
 
-# ------------------------------------
-# Latent Dataset to train the MDN-RNN
+# ---------------------------------------------------------
+# Latent Dataset used to train the MDN-RNN
 
 
 class LatentDataset(Dataset):

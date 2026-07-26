@@ -19,7 +19,8 @@ def vae_train(path):
 
         with torch.no_grad():
             for _ in range(nbatches):
-                # manually reset the iter. if we use itercycle it tries to store 1.1TB of information on the CPU.
+                # manually reset the iter. if we use itercycle 
+                # it tries to store 1.1TB of information on the CPU.
                 try:
                     batch = next(val_iter)
                 except StopIteration:
@@ -35,8 +36,7 @@ def vae_train(path):
         model.train()
         return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
 
-    # -------------
-    # Train the VAE
+    # train the VAE
     Path("checkpoints").mkdir(exist_ok=True)
     Path("logs").mkdir(exist_ok=True)
 

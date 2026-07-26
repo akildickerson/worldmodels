@@ -5,14 +5,11 @@ import torch.nn.functional as F
 
 class VariationalAutoEncoder(nn.Module):
     """
-    Variational Auto Encoder designed to work for 3, 96, 96 images.
+    variational auto encoder designed to work for 3, 96, 96 images.
 
-    3,158,851 parameters and a compression rate of 216x.
-    (3 x 96 x 96 = 27,648) -> (27,648 / 128 = 216)
-
-    Ha and Schmidhuber:
-    4,348,547 parameters and a compression rate of 384x
-    (3 x 64 x 64 = 12,288) -> (12,288 / 32 = 384)
+    References:
+    Ha and Schmidhuber 2018, World Models 
+    Kingman and Welling 2022, Auto-Encoding Variational Bayes  
     """
 
     def __init__(self):
@@ -94,8 +91,10 @@ def ELBOLoss(pred, target, mu, logvar, beta=1.0):
 
 class MixtureDensityNetwork(nn.Module):
     """
-    Ha & Schmidhuber: 422,368
     parameters: 728,581
+    
+    References: 
+    Bishop 1994, Mixutre Density Networks
     """
 
     def __init__(self):
@@ -114,15 +113,16 @@ class MixtureDensityNetwork(nn.Module):
         logits = params[..., :5]  # pi logits (B, T, L)
         mu = params[..., 5:645].reshape(B, L, 5, 128)
         sigma = (F.softplus(params[..., 645:]) + 1e-3).reshape(B, L, 5, 128)
-        sigma = sigma.clamp(min=1e-3, max=10)  # numerical stability
+        sigma = sigma.clamp(min=1e-3, max=10)  # used for numerical stability
 
         return h, logits, mu, sigma
 
 
 def NLL(logits, mu, sigma, z):
     """
-    NLL Loss as described in Bishop 1994, Mixutre Density Networks
+    negative log likelihood loss as described in Bishop 1994, Mixutre Density Networks
     """
+
     z = z.unsqueeze(2)  # z.shape (B, T, L) - > (B, T, 1, L) -> (B, 1000, 1, 128)
     # T represents the number of frames in the rollout & L represents size of latent dimension
     log_pi = F.log_softmax(logits, dim=-1)
@@ -137,9 +137,10 @@ def NLL(logits, mu, sigma, z):
 
 class MLP(nn.Module):
     """
-    takes in a latent and hidden state and returns action.
-    hiddden state encapsulates possible future observations
-    and the latent is the encoded current observation
+    takes in a latent and hidden state and returns an action.
+    the hiddden state encapsulates all information seen 
+    in past observations and the latent is the encoded current
+    observation
     """
 
     def __init__(self):
