@@ -89,11 +89,6 @@ controller stage, A100 for the VAE/MDN-RNN). ~1.1TB of rollout data,
 
 ![Controller training](figures/controller_training.png)
 
-The steep jump around generation 15 is a bug fix, not a breakthrough —
-brake was accidentally wired to `sigmoid` instead of `tanh`, so every
-agent was born unable to release the brake below 50%. Worth a laugh,
-cost a day.
-
 ## what's next
 
 World Models is the ancestor of a whole line of latent world-model
