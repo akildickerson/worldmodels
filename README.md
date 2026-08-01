@@ -1,86 +1,105 @@
 # world-models
 
-A reimplementation (and a few deviations) of Ha & Schmidhuber's
+A from-scratch reimplementation of Ha & Schmidhuber's
 ["World Models"](https://arxiv.org/abs/1803.10122) — an agent that
-learns to drive in CarRacing-v3 using a VAE to compress what it sees,
-an MDN-RNN to imagine what happens next, and a tiny CMA-ES-trained
-controller that barely has to think at all.
+drives CarRacing-v3 having never backpropped through a single frame
+of the real environment. It sees through a VAE, dreams through an
+MDN-RNN, and acts through a controller with about a thousand
+parameters trained with zero gradients at all.
 
-The whole point of this repo is to be small enough to actually read.
-No config yaml sprawl, no ten-deep folder trees. If you want to know
-what the VAE looks like, open `models.py`. That's it.
+```python
+# the whole controller, in full
+class MLP(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(128 + 256, 3)
 
-## 1. Background
+    def forward(self, z, h):
+        a = self.linear(torch.cat([z, h], dim=-1))
+        steer = torch.tanh(a[..., 0:1])
+        gas   = (torch.tanh(a[..., 1:2]) + 1) / 2
+        brake = (torch.tanh(a[..., 2:3]) + 1) / 2
+        return torch.cat([steer, gas, brake], dim=-1)
+```
 
-The original paper is one of the more elegant ideas in RL: instead of
-learning a policy end-to-end from pixels, split the problem into three
-dumb, small pieces:
+That's it. If the world model did its job, the policy doesn't need to
+be smart — it just needs to read a compressed version of reality and
+a summary of the recent past.
 
-1. **See** — compress a 96x96 frame into a small latent vector (VAE).
-2. **Predict** — learn how that latent evolves over time, conditioned
-   on actions (MDN-RNN).
-3. **Act** — a tiny controller (a few hundred parameters) maps
-   latent + memory to an action, trained with evolution instead of
-   backprop, since the reward signal here isn't differentiable anyway.
+## the idea
 
-The original CarRacing agent hit an average of 900.46 over 1024
-rollouts after 1800 generations of CMA-ES. That's the number this repo
-is chasing, with a fraction of the compute budget.
+Three pieces, trained in order, each one frozen before the next starts:
 
-## 2. Models
+| piece | job | trained with |
+|---|---|---|
+| **VAE** | compress a 96×96 frame → 128-dim `z` | backprop (ELBO) |
+| **MDN-RNN** | predict a *distribution* over the next `z`, given `z` + action | backprop (NLL) |
+| **Controller** | `z, h → action` | CMA-ES (no gradients — reward isn't differentiable) |
 
-Everything lives in `models.py` — one file, three classes:
+The original paper hit **900.46** avg reward (1024 rollouts) after
+**1800 generations** of CMA-ES with population 64. This repo hits
+**800** after **233 generations** with population 128 —
+**~3.86x less total CMA-ES compute** than the original.
 
-- **`VariationalAutoEncoder`** — standard conv encoder/decoder, 128-dim
-  latent. Deliberately *not* downsampled to 64x64 like the original
-  paper — full 96x96, on the bet that more visual detail helps the
-  downstream controller.
-- **`MixtureDensityNetwork`** — an LSTM + a mixture-of-Gaussians output
-  head. Predicts a distribution over the next latent, not a single
-  point estimate, because the future genuinely is uncertain (which way
-  will the track curve?).
-- **`MLP`** (the controller) — one linear layer. That's the whole
-  policy. `[z, h] -> [steer, gas, brake]`, tanh-squashed into range.
-  If the world model did its job, the controller shouldn't need to be
-  clever.
+## report card
 
-## 3. Training
+| | this repo | original paper |
+|---|---|---|
+| image resolution | 96×96 (no downsampling) | 64×64 |
+| latent dim | 128 | 32 |
+| CMA-ES generations | 233 | 1800 |
+| CMA-ES population | 128 | 64 |
+| total population-members evaluated | ~29,824 | ~115,200 |
+| final score (avg, 2048 rollouts) | 800.0 | 900.46 |
 
-Four stages, run in order, each one freezing the last:
+## files
 
-rollout.py -> collect random-policy episodes from the env
+'models.py' - vae, mdn-rnn, controller. three classes, one file.
 
-train.py --model vae -> train the VAE on individual frames
+datasets.py - FrameDataset, EpisodeDataset, LatentDataset
 
-latent.py -> encode every frame witht he frozen VAE
+rollout.py - collect episodes/evaluate a trained controller
 
-train.py --model rnn -> train the MDN-RNN on latent sequences
+latent.py - frozen vae -> z sequences, once per episode
 
-controller.py -> CMA-ES over the controller's 1.1k params
+train.py - train.py --model {vae,rnn}
 
-Ran on UNC's Longleaf cluster. VAE and MDN-RNN train with standard
-backprop; the controller does not — it's optimized directly against
-episode reward via CMA-ES, since reward from a physics sim isn't
-something you can backprop through.
+controller.py - CMA-ES, its own file, own dependencies (cma, multiprocessing)
 
-![VAE loss curve](figures/vae_elbo_loss.png)
-![VAE reconstruction loss](figures/vae_recon_loss.png)
+No config yaml, no trainer abstraction, no callback system. If you
+want to know what the VAE looks like, you open `models.py` and you
+look.
+
+## training
+Ran on UNC's Longleaf HPC cluster (SLURM, 128 CPU workers for the
+controller stage, A100 for the VAE/MDN-RNN). ~1.1TB of rollout data,
+10,000 episodes, 1000 frames each.
+
+**VAE — ELBO & reconstruction loss:**
+
+![VAE loss](figures/vae_elbo_loss.png)
 ![VAE reconstructions](figures/vae_reconstructions.png)
-![MDN-RNN NLL loss](figures/rnn_nll_loss.png)
 
-## 4. Results
+**MDN-RNN — NLL loss:**
 
-[controller eval curve, final score, comparison to 900.46]
+![RNN loss](figures/rnn_nll_loss.png)
 
-## 5. Future Directions
+**Controller — best & mean reward per generation:**
 
-World Models (2018) is the ancestor of a whole family of latent
-world-model approaches — Dreamer, Genie, JEPA, Cosmos, and others,
-each relaxing some assumption this repo still makes (separate training
-stages, a Gaussian-mixture prior, no planning at test time). This repo
-was written to be small enough that swapping any one piece — a
-different environment, an RSSM instead of an MDN-RNN, a learned
+![Controller training](figures/controller_training.png)
+
+The steep jump around generation 15 is a bug fix, not a breakthrough —
+brake was accidentally wired to `sigmoid` instead of `tanh`, so every
+agent was born unable to release the brake below 50%. Worth a laugh,
+cost a day.
+
+## what's next
+
+World Models is the ancestor of a whole line of latent world-model
+agents — Dreamer, Genie, JEPA, Cosmos — each relaxing one of the
+assumptions still baked into this repo (separate training stages, a
+Gaussian mixture prior, no test-time planning). Everything here was
+kept small enough on purpose that swapping in any one piece — a
+different environment, an RSSM instead of an MDN-RNN, a
 world-model-in-the-loop controller — shouldn't require touching
 anything else.
-
----
