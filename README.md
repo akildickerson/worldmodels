@@ -51,7 +51,7 @@ The original paper hit **900.46** avg reward (1024 rollouts) after
 | CMA-ES population | 128 | 64 |
 | total population-members evaluated | ~29,824 | ~115,200 |
 | total rollouts/episodes run    | 477,184 | 1,843,200 |
-| final score (avg, 2048 rollouts) | 800.0 | 900.46 |
+| final score (avg, 2048 rollouts) | 801.56 | 900.46 |
 
 ## files
 
