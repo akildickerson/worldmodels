@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, random_split
 
-from data import FrameDataset, LatentDataset
+from datasets import FrameDataset, LatentDataset
 from models import ELBOLoss, VariationalAutoEncoder, NLL, MixtureDensityNetwork
 
 
