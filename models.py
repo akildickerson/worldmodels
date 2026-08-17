@@ -31,11 +31,11 @@ class VariationalAutoEncoder(nn.Module):
         )  # (B, 256, 6, 6)
 
         # bottle neck
-        self.mu = nn.Linear(9216, 128)
-        self.logvar = nn.Linear(9216, 128)
+        self.mu = nn.Linear(9216, 64)
+        self.logvar = nn.Linear(9216, 64)
 
         # decoder
-        self.linear = nn.Linear(128, 9216)
+        self.linear = nn.Linear(64, 9216)
         self.deconv1 = nn.ConvTranspose2d(256, 128, kernel_size=4, stride=2, padding=1)
         self.deconv2 = nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1)
         self.deconv3 = nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1)
@@ -91,8 +91,6 @@ def ELBOLoss(pred, target, mu, logvar, beta=1.0):
 
 class MixtureDensityNetwork(nn.Module):
     """
-    parameters: 728,581
-    
     References: 
     Bishop 1994, Mixutre Density Networks
     """
@@ -100,9 +98,9 @@ class MixtureDensityNetwork(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.lstm = nn.LSTM(131, 256, batch_first=True)
+        self.lstm = nn.LSTM(67, 256, batch_first=True)
         # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber
-        self.mdn = nn.Linear(256, 1285)
+        self.mdn = nn.Linear(256, 675)
         # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
 
     def forward(self, z, a, hidden=None):
@@ -111,8 +109,8 @@ class MixtureDensityNetwork(nn.Module):
         params = self.mdn(out)
         B, L = params.shape[0], params.shape[1]
         logits = params[..., :5]  # pi logits (B, T, L)
-        mu = params[..., 5:645].reshape(B, L, 5, 128)
-        sigma = (F.softplus(params[..., 645:]) + 1e-3).reshape(B, L, 5, 128)
+        mu = params[..., 5:325].reshape(B, L, 5, 64)
+        sigma = (F.softplus(params[..., 325:]) + 1e-3).reshape(B, L, 5, 64)
         sigma = sigma.clamp(min=1e-3, max=10)  # used for numerical stability
 
         return h, logits, mu, sigma
@@ -145,7 +143,7 @@ class MLP(nn.Module):
 
     def __init__(self):
         super().__init__()
-        self.linear = nn.Linear(128 + 256, 3)
+        self.linear = nn.Linear(64 + 256, 3)
 
     def forward(self, z, h):
         a = self.linear(torch.cat([z, h], dim=-1))

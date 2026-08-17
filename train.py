@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader, random_split
 
 from datasets import FrameDataset, LatentDataset
-from models import ELBOLoss, VariationalAutoEncoder, NLL, MixtureDensityNetwork
+from models import NLL, ELBOLoss, MixtureDensityNetwork, VariationalAutoEncoder
 
 
 def vae_train(path):
@@ -37,8 +37,8 @@ def vae_train(path):
         return sum(losses) / len(losses), sum(recons) / len(recons), val_iter
 
     # train the VAE
-    Path("checkpoints").mkdir(exist_ok=True)
-    Path("logs").mkdir(exist_ok=True)
+    Path("checkpoints/latent-64").mkdir(exist_ok=True)
+    Path("logs/latent-64").mkdir(exist_ok=True)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     eval_interval = 200
@@ -101,9 +101,9 @@ def vae_train(path):
                 )
     # store loss stats and model checkpoints
     torch.save(
-        vae.state_dict(), "checkpoints/vae.pth"
+        vae.state_dict(), "checkpoints/latent-64/vae.pt"
     )  # (use .pt in the future because its recommended)
-    with open("logs/vae_losses.json", "w") as f:
+    with open("logs/latent-64/vae_losses.json", "w") as f:
         json.dump(
             {
                 "train_loss": trlossi,
@@ -118,8 +118,8 @@ def vae_train(path):
 
 def rnn_train(path, epochs):
 
-    Path("checkpoints").mkdir(exist_ok=True)
-    Path("logs").mkdir(exist_ok=True)
+    Path("checkpoints/latent-64").mkdir(exist_ok=True)
+    Path("logs/latent-64").mkdir(exist_ok=True)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     eval_iters = 100
@@ -154,7 +154,7 @@ def rnn_train(path, epochs):
                     a = action[:, :-1, :]
                     target = latent[:, 1:, :]
 
-                    h, logits, mu, sigma = model(z, a)
+                    _, logits, mu, sigma = model(z, a)
                     loss = NLL(logits, mu, sigma, target)
                     losses.append(loss.item())
                 out[split] = sum(losses) / len(losses)
@@ -195,9 +195,10 @@ def rnn_train(path, epochs):
                     flush=True,
                 )
 
-        torch.save(rnn.state_dict(), f"checkpoints/rnn_{epoch}.pt")
-    torch.save(rnn.state_dict(), "checkpoints/rnn.pt")
-    with open("logs/rnn_losses.json", "w") as f:
+        torch.save(rnn.state_dict(), f"checkpoints/latent-64/rnn_{epoch}.pt")
+
+    torch.save(rnn.state_dict(), "checkpoints/latent-64/rnn.pt")
+    with open("logs/latent-64/rnn_losses.json", "w") as f:
         json.dump({"train_loss": trloss, "val_loss": valloss, "steps": steps}, f)
 
 

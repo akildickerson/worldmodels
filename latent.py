@@ -4,7 +4,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from data import EpisodeDataset
+from datasets import EpisodeDataset
 from models import VariationalAutoEncoder
 
 # parse arguments
