@@ -9,7 +9,7 @@ import torch
 
 from models import MLP, MixtureDensityNetwork, VariationalAutoEncoder
 
-checkpoints = Path("checkpoints")
+checkpoints = Path("checkpoints/latent-64")
 
 # global variables inside each worker - loaded once per worker
 _vae = None
@@ -26,11 +26,11 @@ def init_worker(device: str):
     _device = torch.device(device)
 
     _vae = VariationalAutoEncoder().to(_device)
-    _vae.load_state_dict(torch.load("checkpoints/vae.pth", map_location=_device))
+    _vae.load_state_dict(torch.load("checkpoints/latent-64/vae.pt", map_location=_device))
     _vae.eval()
 
     _rnn = MixtureDensityNetwork().to(_device)
-    _rnn.load_state_dict(torch.load("checkpoints/rnn.pt", map_location=_device))
+    _rnn.load_state_dict(torch.load("checkpoints/latent-64/rnn.pt", map_location=_device))
     _rnn.eval()
 
     _controller = MLP().to(_device)
@@ -163,7 +163,7 @@ def train_controller(generations=250, population=128, n_rollouts=16, eval_iter=2
                     f"(avg over {rollouts} rollouts)",
                     flush=True,
                 )
-    with open("logs/controller_eval.json", "w") as f:
+    with open("logs/latent-64/controller_eval.json", "w") as f:
         json.dump({"gens": gens, "scores": scores}, f)
 
     print(f"training complete | best reward: {_best:.1f}", flush=True)
