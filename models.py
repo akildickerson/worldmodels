@@ -100,7 +100,7 @@ class MixtureDensityNetwork(nn.Module):
 
         self.lstm = nn.LSTM(67, 256, batch_first=True)
         # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber
-        self.mdn = nn.Linear(256, 675)
+        self.mdn = nn.Linear(256, 645)
         # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
 
     def forward(self, z, a, hidden=None):
