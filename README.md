@@ -43,15 +43,15 @@ The original paper hit **900.46** avg reward (1024 rollouts) after
 
 ## report card
 
-| | this repo | original paper |
-|---|---|---|
-| image resolution | 96×96 (no downsampling) | 64×64 |
-| latent dim | 128 | 32 |
-| CMA-ES generations | 233 | 1800 |
-| CMA-ES population | 128 | 64 |
-| total population-members evaluated | ~29,824 | ~115,200 |
-| total rollouts/episodes run    | 477,184 | 1,843,200 |
-| final score (avg, 2048 rollouts) | 801.56 | 900.46 |
+| | this repo (128-dim) | this repo (64-dim) | original paper |
+|---|---|---|---|
+| image resolution | 96×96 (no downsampling) | 96×96 (no downsampling) | 64×64 |
+| latent dim | 128 | 64 | 32 |
+| CMA-ES generations | 233 | 250 | 1800 |
+| CMA-ES population | 128 | 128 | 64 |
+| total population-members evaluated | ~29,824 | 32,000 | ~115,200 |
+| total rollouts/episodes run | 477,184 | 512,000 | 1,843,200 |
+| final score (avg, 2048 rollouts) | 801.56 | **881.0** | 900.46 |
 
 ## files
 
