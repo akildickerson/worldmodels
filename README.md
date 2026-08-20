@@ -78,16 +78,16 @@ controller stage, A100 for the VAE/MDN-RNN). ~1.1TB of rollout data,
 
 **VAE — ELBO & reconstruction loss:**
 
-![VAE loss](figures/vae_elbo_loss.png)
-![VAE reconstructions](figures/vae_reconstructions.png)
+![VAE loss](figures/latent-64/vae_elbo_loss.png)
+![VAE reconstructions](figures/latent-64/vae_reconstructions.png)
 
 **MDN-RNN — NLL loss:**
 
-![RNN loss](figures/rnn_nll_loss.png)
+![RNN loss](figures/latent-64/rnn_nll_loss.png)
 
 **Controller — best & mean reward per generation:**
 
-![Controller training](figures/controller_training.png)
+![Controller training](figures/latent-64/reward_vs_generation.png)
 
 ## what's next
 
