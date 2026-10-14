@@ -9,7 +9,7 @@ import torch
 
 from models import MLP, MixtureDensityNetwork, VariationalAutoEncoder
 
-checkpoints = Path("checkpoints/latent-64")
+checkpoints = Path("checkpoints/latent-128")
 
 # global variables inside each worker - loaded once per worker
 _vae = None
@@ -26,11 +26,11 @@ def init_worker(device: str):
     _device = torch.device(device)
 
     _vae = VariationalAutoEncoder().to(_device)
-    _vae.load_state_dict(torch.load("checkpoints/latent-64/vae.pt", map_location=_device))
+    _vae.load_state_dict(torch.load("checkpoints/latent-128/vae.pth", map_location=_device))
     _vae.eval()
 
     _rnn = MixtureDensityNetwork().to(_device)
-    _rnn.load_state_dict(torch.load("checkpoints/latent-64/rnn.pt", map_location=_device))
+    _rnn.load_state_dict(torch.load("checkpoints/latent-128/rnn.pt", map_location=_device))
     _rnn.eval()
 
     _controller = MLP().to(_device)
@@ -100,7 +100,7 @@ def evaluate_agent(params, pool, n_workers, n_rollouts, rng):
     return float(np.mean(means))
 
 
-def train_controller(generations=900, population=128, n_rollouts=16, eval_iter=25, workers=None):
+def train_controller(generations=250, population=128, n_rollouts=16, eval_iter=25, workers=None):
     checkpoints.mkdir(exist_ok=True)
     device = "cpu"
 
@@ -145,7 +145,7 @@ def train_controller(generations=900, population=128, n_rollouts=16, eval_iter=2
                 params = solutions[fitnesses.index(best)]
                 controller = MLP()
                 _load_params(controller, params)
-                torch.save(controller.state_dict(), checkpoints / "controller.pt")
+                torch.save(controller.state_dict(), checkpoints / "250controller.pt")
                 print(f" ---> new best: {_best:.1f}", flush=True)
 
             # Every eval_iter generations, evaluate the current best agent
@@ -163,7 +163,7 @@ def train_controller(generations=900, population=128, n_rollouts=16, eval_iter=2
                     f"(avg over {rollouts} rollouts)",
                     flush=True,
                 )
-    with open("logs/latent-64/controller_eval.json", "w") as f:
+    with open("logs/latent-128/250controller_eval.json", "w") as f:
         json.dump({"gens": gens, "scores": scores}, f)
 
     print(f"training complete | best reward: {_best:.1f}", flush=True)
