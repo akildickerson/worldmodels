@@ -98,7 +98,7 @@ class MixtureDensityNetwork(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.lstm = nn.LSTM(128, 256, batch_first=True)
+        self.lstm = nn.LSTM(131, 256, batch_first=True)
         # z + a = 128 + 3 = 131 and 256 chosen from Ha and Schmidhuber
         self.mdn = nn.Linear(256, 1285)
         # (pi (1), mu (128), sigma (128)) -> (1 + 128 + 128) = 257 -> (257 * 5) = 1285
