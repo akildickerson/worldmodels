@@ -38,7 +38,7 @@ Three pieces, trained in order, each one frozen before the next starts:
 
 The original paper hit **900.46** avg reward (1024 rollouts) after
 **1800 generations** of CMA-ES with population 64. This repo hits
-**800** after **233 generations** with population 128 —
+**881** after **250 generations** with population 128 —
 **~3.86x less total CMA-ES compute** than the original.
 
 ## report card
